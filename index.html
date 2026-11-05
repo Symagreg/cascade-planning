@@ -134,11 +134,11 @@ function start(){
   if(today<lo||today>hi) today=lo;
   month=today.slice(0,7); mm=(+today.slice(8)>=25)?iso(new Date(+today.slice(0,4),+today.slice(5,7),1)).slice(0,7):month; render();
 }
-const upd=()=>{const d=new Date(D.updated);return 'Mis à jour le '+d.toLocaleDateString('fr-FR',{day:'numeric',month:'long'})+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})};
+const upd=()=>{const d=new Date(D.updated);return 'Vérifié dans l’extranet le '+d.toLocaleDateString('fr-FR',{day:'numeric',month:'long'})+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}).replace(':','h')};
 function alertHtml(){
-  const s=D.sources||{}, old=(Date.now()-new Date(D.updated))>36*36e5;
+  const s=D.sources||{}, old=(Date.now()-new Date(D.updated))>26*36e5;
   if(s.extranet==='perdu') return '<div class="demo" style="background:var(--bad-tint);color:var(--bad)">Connexion à Booking perdue : les réservations peuvent être incomplètes. Le propriétaire est prévenu.</div>';
-  if(old) return '<div class="demo" style="background:var(--bad-tint);color:var(--bad)">Planning pas mis à jour depuis plus de 36 h : vérifie auprès du propriétaire.</div>';
+  if(old) return '<div class="demo" style="background:var(--bad-tint);color:var(--bad)">Planning pas vérifié dans l’extranet depuis plus d’un jour : demande confirmation au propriétaire.</div>';
   return '';
 }
 function render(){
