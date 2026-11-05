@@ -82,7 +82,7 @@ section.blk>h2{margin:0;font-size:.82rem;letter-spacing:.09em;text-transform:upp
 .bar.nw{box-shadow:0 0 0 2px var(--new)}
 .legend{font-size:.8rem;color:var(--soft)}
 /* barre du bas */
-nav.tabs{position:fixed;inset:auto 0 0 0;z-index:6;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr);padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+nav.tabs{position:fixed;inset:auto 0 0 0;z-index:6;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
 nav.tabs button{border:0;background:none;min-height:56px;border-radius:12px;display:grid;place-items:center;gap:0;font-size:.78rem;font-weight:700;color:var(--soft)}
 nav.tabs button b{font-size:1.25rem;line-height:1}
 nav.tabs button[aria-selected="true"]{color:var(--pine);background:var(--pine-tint)}
@@ -142,16 +142,16 @@ function alertHtml(){
   return '';
 }
 function render(){
-  const ttl={today:fr.format(pd(today)),week:'7 prochains jours',month:'Calendrier'}[view];
+  const ttl={today:fr.format(pd(today)),week:'7 prochains jours',month:'Calendrier',msg:'Message du mois'}[view];
   $('#app').innerHTML=`  ${alertHtml()}<header class="top"><div><h1>${esc(ttl)}</h1><small>${upd()}</small></div>
   <div class="tools"><button class="ic" id="lockb" aria-label="Verrouiller">🔒</button></div></header>
   <main id="m"></main>
   <nav class="tabs" role="tablist" aria-label="Vues">
-   ${[['today','◉','Aujourd’hui'],['week','▤','Semaine'],['month','▦','Mois']].map(([k,i,t])=>`<button role="tab" aria-selected="${view===k}" data-v="${k}"><b aria-hidden="true">${i}</b>${t}</button>`).join('')}
+   ${[['today','◉','Aujourd’hui'],['week','▤','Semaine'],['month','▦','Mois'],['msg','✉','Message']].map(([k,i,t])=>`<button role="tab" aria-selected="${view===k}" data-v="${k}"><b aria-hidden="true">${i}</b>${t}</button>`).join('')}
   </nav><dialog id="dlg"></dialog>`;
   $('#lockb').onclick=()=>{D=null;lockScreen()};
   document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{view=b.dataset.v;render();scrollTo(0,0)});
-  ({today:vToday,week:vWeek,month:vMonth})[view]();
+  ({today:vToday,week:vWeek,month:vMonth,msg:vMsg})[view]();
   $('#m').addEventListener('click',e=>{const t=e.target.closest('[data-r]');if(t)openSheet(t.dataset.r)});
 }
 const sameDayArr=r=>act().some(x=>x.l===r.l&&x.arr===r.dep);
@@ -204,6 +204,35 @@ function vMonth(){
   <p class="legend">Chaque barre est un séjour, de l’arrivée au départ. Touche une barre pour ouvrir la fiche. Contour bleu : réservation nouvelle.</p>`;
   $('#pm').onclick=()=>{month=prev;render()}; $('#nm').onclick=()=>{month=next;render()};
   const gw=$('#gw'); if(month===today.slice(0,7)) gw.scrollLeft=Math.max(0,(+today.slice(8)-3)*38);
+}
+
+const ORD=[['1','115'],['2','115 bis'],['4','Rdc 2 pièces'],['5','Studio'],['3','Escapade']];
+const tel0=t=>t?String(t).replace(/\s/g,'').replace(/^\+33/,'0'):'(téléphone à venir)';
+const dj=s=>String(+s.slice(8));
+function msgText(mk){
+  const [y,mo]=mk.split('-').map(Number), name=new Intl.DateTimeFormat('fr-FR',{month:'long'}).format(new Date(y,mo-1,1));
+  let t='Réservations '+name.charAt(0).toUpperCase()+name.slice(1);
+  ORD.forEach(([id,lab])=>{
+    const rs=act().filter(r=>r.l===id&&r.arr.slice(0,7)===mk).sort((a,b)=>a.arr<b.arr?-1:1);
+    if(!rs.length)return;
+    t+='\n\n'+lab+'\n'+rs.map((r,i)=>{
+      const same=r.dep.slice(0,7)===mk, dd=same?dj(r.dep):dj(r.dep)+' '+new Intl.DateTimeFormat('fr-FR',{month:'long'}).format(pd(r.dep));
+      return (i+1)+') '+r.nom+' '+dj(r.arr)+' au '+dd+' '+tel0(r.tel)+'\n'+r.pers;
+    }).join('\n');
+  });
+  return t;
+}
+function vMsg(){
+  const [y,mo]=month.split('-').map(Number), first=new Date(y,mo-1,1);
+  const prev=iso(new Date(y,mo-2,1)).slice(0,7), next=iso(new Date(y,mo,1)).slice(0,7), txt=msgText(month);
+  const miss=act().filter(r=>r.arr.slice(0,7)===month&&!r.tel).length;
+  $('#m').innerHTML=`<div class="mnav"><button class="ic" id="pm" aria-label="Mois précédent">‹</button><b>${frM.format(first)}</b><button class="ic" id="nm" aria-label="Mois suivant">›</button></div>
+  <a class="btn wa" href="https://wa.me/?text=${encodeURIComponent(txt)}" target="_blank" rel="noopener">Envoyer sur WhatsApp</a>
+  <button class="btn ghost" id="cpm">Copier le message</button>
+  ${miss?`<p class="legend">${miss} réservation${miss>1?'s':''} sans numéro de téléphone pour l’instant.</p>`:''}
+  <pre id="mt" style="white-space:pre-wrap;overflow-wrap:anywhere;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin:0">${esc(txt)}</pre>`;
+  $('#pm').onclick=()=>{month=prev;render()}; $('#nm').onclick=()=>{month=next;render()};
+  $('#cpm').onclick=async()=>{try{await navigator.clipboard.writeText(txt);$('#cpm').textContent='Message copié'}catch(e){const g=getSelection(),r=document.createRange();r.selectNodeContents($('#mt'));g.removeAllRanges();g.addRange(r);$('#cpm').textContent='Message sélectionné'}};
 }
 function openSheet(id){
   const r=D.res.find(x=>x.id===id), lg=L(r.l), dlg=$('#dlg');
